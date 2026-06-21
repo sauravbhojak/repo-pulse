@@ -37,7 +37,10 @@ export async function submitAnalysis(url: string) {
 
   if (existingAnalysis) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    if (existingAnalysis.updatedAt > twentyFourHoursAgo) {
+    const githubData = existingAnalysis.githubData as any;
+    const hasNewFields = githubData && githubData.languages !== undefined;
+    
+    if (existingAnalysis.updatedAt > twentyFourHoursAgo && hasNewFields) {
       return { id: existingAnalysis.id, owner, name };
     }
   }

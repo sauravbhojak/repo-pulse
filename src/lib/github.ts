@@ -17,6 +17,12 @@ export interface RepoAnalysisData {
     totalOpen: number;
     totalClosed: number;
   };
+  pullRequests: {
+    totalOpen: number;
+    totalMerged: number;
+    totalClosed: number;
+  };
+  languages: Record<string, number>;
   communityProfile: any;
   hasTests: boolean;
   hasCI: boolean;
@@ -35,14 +41,29 @@ export async function analyzeRepository(owner: string, name: string): Promise<Re
       per_page: 100,
     });
 
-    // 3. Fetch issue stats (we use search to get totals quickly)
+    // 3. Fetch issue and PR stats (we use search to get totals quickly)
     const openIssuesQuery = `repo:${owner}/${name} type:issue state:open`;
     const closedIssuesQuery = `repo:${owner}/${name} type:issue state:closed`;
+    const openPRsQuery = `repo:${owner}/${name} type:pr state:open`;
+    const mergedPRsQuery = `repo:${owner}/${name} type:pr is:merged`;
+    const closedPRsQuery = `repo:${owner}/${name} type:pr state:closed is:unmerged`;
     
-    const [openIssuesRes, closedIssuesRes] = await Promise.all([
+    const [openIssuesRes, closedIssuesRes, openPRsRes, mergedPRsRes, closedPRsRes] = await Promise.all([
       octokit.search.issuesAndPullRequests({ q: openIssuesQuery, per_page: 1 }),
       octokit.search.issuesAndPullRequests({ q: closedIssuesQuery, per_page: 1 }),
+      octokit.search.issuesAndPullRequests({ q: openPRsQuery, per_page: 1 }),
+      octokit.search.issuesAndPullRequests({ q: mergedPRsQuery, per_page: 1 }),
+      octokit.search.issuesAndPullRequests({ q: closedPRsQuery, per_page: 1 }),
     ]);
+
+    // 3.5 Fetch Languages
+    let languages: Record<string, number> = {};
+    try {
+      const { data } = await octokit.repos.listLanguages({ owner, repo: name });
+      languages = data;
+    } catch (e) {
+      console.warn("Could not fetch languages", e);
+    }
 
     // 4. Fetch community profile (README, LICENSE, etc.)
     let communityProfile = null;
@@ -100,6 +121,12 @@ export async function analyzeRepository(owner: string, name: string): Promise<Re
         totalOpen: openIssuesRes.data.total_count,
         totalClosed: closedIssuesRes.data.total_count,
       },
+      pullRequests: {
+        totalOpen: openPRsRes.data.total_count,
+        totalMerged: mergedPRsRes.data.total_count,
+        totalClosed: closedPRsRes.data.total_count,
+      },
+      languages,
       communityProfile,
       hasTests,
       hasCI,

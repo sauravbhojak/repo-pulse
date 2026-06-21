@@ -81,11 +81,17 @@ export default async function RepoPage({ params }: { params: Promise<{ owner: st
             <CardTitle>Repository Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
               <StatItem icon={<Star className="w-5 h-5 text-yellow-500" />} label="Stars" value={details.stargazers_count.toLocaleString()} />
               <StatItem icon={<GitFork className="w-5 h-5 text-blue-500" />} label="Forks" value={details.forks_count.toLocaleString()} />
               <StatItem icon={<Code className="w-5 h-5 text-purple-500" />} label="Language" value={details.language || "N/A"} />
               <StatItem icon={<Clock className="w-5 h-5 text-green-500" />} label="Created" value={new Date(details.created_at).toLocaleDateString()} />
+              <StatItem icon={<AlertTriangle className="w-5 h-5 text-orange-500" />} label="Open PRs" value={githubData.pullRequests?.totalOpen ?? "N/A"} />
+              <StatItem icon={<CheckCircle className="w-5 h-5 text-emerald-500" />} label="Merge Rate" value={
+                githubData.pullRequests && (githubData.pullRequests.totalMerged + githubData.pullRequests.totalClosed) > 0 
+                  ? `${((githubData.pullRequests.totalMerged / (githubData.pullRequests.totalMerged + githubData.pullRequests.totalClosed)) * 100).toFixed(0)}%` 
+                  : "N/A"
+              } />
             </div>
             <Separator className="my-6" />
             <div className="grid md:grid-cols-2 gap-6">
@@ -99,6 +105,33 @@ export default async function RepoPage({ params }: { params: Promise<{ owner: st
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-3">Language Breakdown</h4>
+                <div className="space-y-3">
+                  {githubData.languages && Object.keys(githubData.languages).length > 0 ? (
+                    (() => {
+                      const totalBytes = Object.values(githubData.languages).reduce((a: any, b: any) => a + b, 0) as number;
+                      return Object.entries(githubData.languages)
+                        .sort((a: any, b: any) => b[1] - a[1])
+                        .slice(0, 5)
+                        .map(([lang, bytes]: [string, any], i) => (
+                          <div key={i} className="flex flex-col gap-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="font-medium">{lang}</span>
+                              <span className="text-muted-foreground">{((bytes / totalBytes) * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-secondary rounded-full h-1.5">
+                              <div className="bg-primary h-1.5 rounded-full" style={{ width: `${(bytes / totalBytes) * 100}%` }}></div>
+                            </div>
+                          </div>
+                        ));
+                    })()
+                  ) : (
+                    <span className="text-muted-foreground text-sm">No language data available.</span>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

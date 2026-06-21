@@ -1,13 +1,14 @@
-import { submitAnalysis } from './src/app/actions';
-import 'dotenv/config';
+import { analyzeRepository } from './src/lib/github';
 
 async function main() {
   try {
-    console.log("Submitting analysis...");
-    const res = await submitAnalysis("https://github.com/EbookFoundation/free-programming-books");
-    console.log("Success:", res);
-  } catch (e) {
-    console.error("Error:", e);
+    const data = await analyzeRepository("sauravbhojak", "hrms-system");
+    console.log("Details Language:", data.details.language);
+    console.log("Languages:", data.languages);
+    console.log("PRs:", data.pullRequests);
+  } catch (error) {
+    console.error("Error:", error);
   }
 }
+
 main();
