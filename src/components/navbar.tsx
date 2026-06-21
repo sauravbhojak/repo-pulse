@@ -16,7 +16,7 @@ export function NavBar() {
             Compare
           </Link>
           <Link href="/admin" className="transition-colors hover:text-foreground/80 text-foreground/60">
-            Admin
+            My History
           </Link>
           <Link href="/" className={cn(buttonVariants({ size: "sm" }), "hidden md:inline-flex rounded-full")}>
             Analyze Repo

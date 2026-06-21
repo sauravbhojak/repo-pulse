@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { analyzeRepository } from '@/lib/github';
 import { calculateHealthScore, generateRecommendations } from '@/lib/scoring';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+import { randomUUID } from 'crypto';
 
 // Helper to extract owner and name from GitHub URL
 function parseGithubUrl(url: string) {
@@ -22,13 +24,19 @@ function parseGithubUrl(url: string) {
 
 export async function submitAnalysis(url: string) {
   const repoInfo = parseGithubUrl(url);
-  
+
   if (!repoInfo) {
     throw new Error('Invalid GitHub repository URL. Must be in the format https://github.com/owner/name');
   }
 
   const { owner, name } = repoInfo;
   const canonicalUrl = `https://github.com/${owner}/${name}`.toLowerCase();
+
+  const cookieStore = await cookies();
+  let sessionId = cookieStore.get('repopulse_session')?.value;
+  if (!sessionId) {
+    sessionId = randomUUID(); // fallback if middleware failed
+  }
 
   // Check cache (within last 24 hours)
   const existingAnalysis = await prisma.repositoryAnalysis.findUnique({
@@ -39,8 +47,23 @@ export async function submitAnalysis(url: string) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const githubData = existingAnalysis.githubData as any;
     const hasNewFields = githubData && githubData.languages !== undefined;
-    
+
     if (existingAnalysis.updatedAt > twentyFourHoursAgo && hasNewFields) {
+      await prisma.userSearchHistory.upsert({
+        where: {
+          sessionId_analysisId: {
+            sessionId: sessionId,
+            analysisId: existingAnalysis.id,
+          }
+        },
+        create: {
+          sessionId: sessionId,
+          analysisId: existingAnalysis.id,
+        },
+        update: {
+          createdAt: new Date(),
+        }
+      });
       return { id: existingAnalysis.id, owner, name };
     }
   }
@@ -69,12 +92,29 @@ export async function submitAnalysis(url: string) {
       githubData: githubData as any,
     },
   });
+
+  await prisma.userSearchHistory.upsert({
+    where: {
+      sessionId_analysisId: {
+        sessionId: sessionId,
+        analysisId: analysis.id,
+      }
+    },
+    create: {
+      sessionId: sessionId,
+      analysisId: analysis.id,
+    },
+    update: {
+      createdAt: new Date(),
+    }
+  });
+
   return { id: analysis.id, owner, name };
 }
 
 export async function getAnalysis(owner: string, name: string) {
   const canonicalUrl = `https://github.com/${owner}/${name}`.toLowerCase();
-  
+
   const analysis = await prisma.repositoryAnalysis.findUnique({
     where: { url: canonicalUrl },
   });
@@ -94,16 +134,31 @@ export async function getRecentAnalyses(limit = 10) {
 }
 
 export async function getAdminStats() {
-  const totalAnalyses = await prisma.repositoryAnalysis.count();
-  const recent = await prisma.repositoryAnalysis.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 5,
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get('repopulse_session')?.value;
+
+  if (!sessionId) {
+    return { totalAnalyses: 0, recent: [], popular: [] };
+  }
+
+  const userSearches = await prisma.userSearchHistory.findMany({
+    where: { sessionId },
+    include: { analysis: true },
+    orderBy: { createdAt: 'desc' }
   });
-  
-  const popular = await prisma.repositoryAnalysis.findMany({
-    orderBy: { score: 'desc' },
-    take: 5,
+
+  // Extract unique analyses
+  const uniqueAnalysesMap = new Map();
+  userSearches.forEach(item => {
+    if (!uniqueAnalysesMap.has(item.analysis.id)) {
+      uniqueAnalysesMap.set(item.analysis.id, item.analysis);
+    }
   });
+  const uniqueAnalyses = Array.from(uniqueAnalysesMap.values());
+
+  const totalAnalyses = uniqueAnalyses.length;
+  const recent = uniqueAnalyses.slice(0, 5);
+  const popular = [...uniqueAnalyses].sort((a, b) => b.score - a.score).slice(0, 5);
 
   return { totalAnalyses, recent, popular };
 }

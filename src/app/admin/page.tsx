@@ -12,8 +12,8 @@ export default async function AdminPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl mt-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Overview of RepoPulse usage and analyzed repositories.</p>
+        <h1 className="text-3xl font-bold tracking-tight">My History</h1>
+        <p className="text-muted-foreground">Overview of the repositories you have analyzed.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">

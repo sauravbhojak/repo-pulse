@@ -18,6 +18,17 @@ model RepositoryAnalysis {
   githubData      Json
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  searches        UserSearchHistory[]
+}
+
+model UserSearchHistory {
+  id           String             @id @default(cuid())
+  sessionId    String
+  analysisId   String
+  analysis     RepositoryAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+
+  @@unique([sessionId, analysisId])
 }
 
 model Comparison {
