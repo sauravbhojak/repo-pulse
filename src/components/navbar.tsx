@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function NavBar() {
   return (
@@ -17,9 +18,9 @@ export function NavBar() {
           <Link href="/admin" className="transition-colors hover:text-foreground/80 text-foreground/60">
             Admin
           </Link>
-          <Button asChild size="sm" className="hidden md:inline-flex rounded-full">
-            <Link href="/">Analyze Repo</Link>
-          </Button>
+          <Link href="/" className={cn(buttonVariants({ size: "sm" }), "hidden md:inline-flex rounded-full")}>
+            Analyze Repo
+          </Link>
         </nav>
       </div>
     </header>
