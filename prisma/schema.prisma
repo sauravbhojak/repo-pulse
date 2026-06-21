@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RepositoryAnalysis {
+  id              String   @id @default(cuid())
+  url             String   @unique
+  owner           String
+  name            String
+  score           Int
+  metrics         Json
+  recommendations Json
+  githubData      Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Comparison {
+  id        String   @id @default(cuid())
+  repo1Url  String
+  repo2Url  String
+  createdAt DateTime @default(now())
+}
